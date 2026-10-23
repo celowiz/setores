@@ -53,7 +53,7 @@ jobs:
       - name: Testes
         run: |
           python -m pytest -q tests
-          node --test tests/
+          node --test tests/calc.test.mjs
       # Yahoo (EUA, ajustado) + API pública de índices da B3 (Brasil). Se uma fonte falhar,
       # mantém o último bloco publicado (marcado como desatualizado); sem dado anterior, o build falha
       # e o Pages segue com a versão anterior do site.

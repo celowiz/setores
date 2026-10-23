@@ -104,7 +104,7 @@ pip install -r requirements.txt
 python scripts/fetch_data.py data            # baixa os dados (~40 s)
 python -m http.server 8000                   # abra http://localhost:8000/
 ruff check . && ruff format --check .        # lint
-python -m pytest -q tests && node --test tests/
+python -m pytest -q tests && node --test tests/calc.test.mjs
 ```
 
 `scripts/make_assets.py` gera `favicon-16.png` (a partir de `favicon-16.svg`, versão simplificada para a aba), `favicon-32.png`, `favicon.ico` (16/32/48), `apple-touch-icon.png` e `og.png` (1200×630, com um print real do gráfico) a partir de `favicon.svg`. Ele precisa do site rodando localmente e do Playwright. Não roda no CI; as imagens são versionadas.
