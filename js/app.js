@@ -62,10 +62,10 @@ function draw(st,s,yr,p){
 function animate(){cancelAnimationFrame(anim);if(!prev){frame(1);return}const t0=performance.now(),dur=520*(window.__slow||1);const f=now=>{const p=Math.min(1,(now-t0)/dur);frame(p);if(p<1)anim=requestAnimationFrame(f);else prev=null};anim=requestAnimationFrame(f)}
 
 // ---------- ranking (também é a legenda) ----------
-const rk=$('#rank');let rows={};
+const rk=$('#rank');let rows={},RH=36;
 function rank(st){
  const keys=[...st.keys].sort((a,b)=>(st.end[b]??-9)-(st.end[a]??-9)),vals=keys.map(k=>st.end[k]).filter(v=>v!=null);
- const lo=Math.min(0,...vals),hi=Math.max(0,...vals),sp=(hi-lo)||1,z=-lo/sp*100,RH=36;
+ const lo=Math.min(0,...vals),hi=Math.max(0,...vals),sp=(hi-lo)||1,z=-lo/sp*100;
  for(const k in rows)if(!st.keys.includes(k)){rows[k].remove();delete rows[k]}
  keys.forEach((k,i)=>{let r=rows[k];
   if(!r){r=rows[k]=document.createElement('div');r.className='rr';r.innerHTML=`<div class="tk"><i style="background:${COL[k]}"></i>${k}<span class="nm">${L.names[k]}</span></div><div class="tr"><div class="bar" style="background:${COL[k]}"></div></div><div class="v" style="background:${COL[k]}"></div>`;
@@ -78,7 +78,30 @@ function rank(st){
   const b=r.querySelector('.bar'),x=v==null?z:(v-lo)/sp*100;b.style.left=Math.min(z,x)+'%';b.style.width=Math.abs(x-z)+'%';
   r.querySelector('.v').textContent=pct(v)+(st.late[k]?'*':'');
  });
- rk.style.height=keys.length*RH+'px';
+ rk.style.height=keys.length*RH+'px';rk.style.setProperty('--rh',RH+'px');
+}
+// ---------- encaixe na viewport (desktop) ----------
+// No desktop (grade em 2 colunas) a altura do gráfico e das linhas do ranking sai do espaço que sobra
+// abaixo do topo da grade, para gráfico (com eixo x) e ranking caberem sem rolar. Na Rotação o
+// heatmap entra junto só se ainda sobrar >= FULL px para o gráfico; senão ele fica abaixo da dobra.
+const FULL=380,bot=e=>e.getBoundingClientRect().bottom,lastVis=el=>[...el.children].filter(e=>e.getClientRects().length).pop();
+function fit(){
+ let h=null;RH=36;
+ if(innerWidth>1000){
+  const g=$('.grid'),card=$('.chartcard'),rc=$('.rankcard'),hb=$('#heatBox'),px=(e,p)=>parseFloat(getComputedStyle(e)[p])||0;
+  const avail=innerHeight-(g.getBoundingClientRect().top+px(g,'paddingTop'))-14;
+  const ct=card.getBoundingClientRect().top,cvh=cv.getBoundingClientRect().height,le=lastVis(card);
+  const content=bot(le)+px(le,'marginBottom')+px(card,'paddingBottom')-ct;
+  const heatH=hb.hidden?0:bot(hb)-bot($('#cwrap'));
+  const chrome=content-cvh-heatH;
+  h=avail-chrome;if(heatH&&h-heatH>=FULL)h-=heatH;
+  h=Math.round(Math.max(300,Math.min(620,h)));
+  const rl=lastVis(rc),rch=bot(rl)+px(rl,'marginBottom')+px(rc,'paddingBottom')-rc.getBoundingClientRect().top-rk.getBoundingClientRect().height;
+  const n=cur?cur.keys.length:12,target=Math.max(avail,chrome+h+heatH);
+  RH=Math.max(26,Math.min(36,Math.floor((target-rch)/n)));
+ }
+ if(h==null)cv.style.removeProperty('--ch');else cv.style.setProperty('--ch',h+'px');
+ size();
 }
 function paintHl(){for(const k in rows)rows[k].classList.toggle('hl',S.hl===k);if(cur){frame(1);if(S.hover!=null)tip()}}
 
@@ -138,8 +161,8 @@ function refresh(tween){
  $('#rTitle').textContent=S.mode==='acc'?tr('rank_acc',{p:lbl}):tr('rank_rot',{r:lbl});$('#rSub').textContent=S.rel?'/'+bm:tr('rsub_'+S.tab);
  const notes=Object.entries(cur.late).map(([k,ms])=>'<b>*</b> '+tr('since',{t:k,d:fd(ms)}));
  $('#notes').innerHTML=[cur.weekly?tr('weekly'):tr('daily'),...notes].join(' · ');
- rank(cur);animate();
- if(S.mode==='rot'){heat(cur);leader(cur)}else $('#leader').innerHTML='';
+ if(S.mode==='rot'){leader(cur);heat(cur)}else $('#leader').innerHTML='';
+ fit();rank(cur);animate();
 }
 function leader(st){const keys=st.keys.filter(k=>k!==st.bm),m=st.t.length,top=j=>keys.filter(k=>st.s[k][j]!=null).sort((a,b)=>st.s[b][j]-st.s[a][j])[0];
  const L0=top(m-1);if(!L0){$('#leader').innerHTML='';return}let n=0;for(let j=m-1;j>=0&&top(j)===L0;j--)n++;
@@ -148,7 +171,7 @@ function start(data){D=data;for(const k of['us','br']){D[k].D=C.dec(D[k].d);D[k]
  seg($('#tab'),'tab',()=>{S.off.clear();rows={};rk.innerHTML='';prev=null});seg($('#mode'),'mode');
  $('#rel').onclick=()=>{S.rel=!S.rel;refresh(true)};$('#all').onclick=()=>{S.off.clear();refresh(false)};
  pillsAll();header();size();refresh(false);
- addEventListener('resize',()=>{size();if(cur){frame(1);if(S.mode==='rot')heat(cur)}});
+ addEventListener('resize',()=>{if(cur){if(S.mode==='rot')heat(cur);fit();rank(cur);frame(1)}else size()});
  // ganchos para testes/screenshots
  window.__S=S;window.__g=()=>cur;window.__set=(o,tw=true)=>{Object.assign(S,o);document.querySelectorAll('#tab button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.tab));document.querySelectorAll('#mode button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.mode));
   for(const id of['per','roll','hor'])document.querySelectorAll('#'+id+' button').forEach(b=>b.classList.toggle('on',b.dataset.v===S[id]));refresh(tw)};

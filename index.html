@@ -13,17 +13,19 @@
 <div class="l"><a href="https://celowiz.github.io/" data-i="portfolio">Portfólio</a><a href="https://celowiz.github.io/monitor-b3/">Monitor B3</a><a href="https://celowiz.github.io/rrg/">RRG</a><a href="https://celowiz.github.io/quant-notebooks/">Quant Notebooks</a><a class="on" href="./" data-i="navself">Setores</a></div>
 <div class="navr"><div class="seg sm" id="lang"><button class="on" data-l="pt">PT</button><button data-l="en">EN</button></div></div></nav>
 <header class="hero"><div class="eyebrow" data-i="eyebrow">Projeto · Performance setorial</div>
-<h1 data-i="h1">Quais setores estão<br>puxando a bolsa?</h1>
-<p class="lead" data-i="lead">Retorno acumulado e rotação dos setores nos EUA (ETFs SPDR) e no Brasil (índices setoriais da B3), com dados reais atualizados todo dia útil.</p>
-<div class="status" id="status">Carregando dados…</div></header>
+<h1 data-i="h1">Quais setores estão <br>puxando a bolsa?</h1>
+</header>
 <section class="toolbar">
  <div class="row">
   <div class="seg" id="tab"><button class="on" data-v="us" data-i="t_us">🇺🇸 EUA</button><button data-v="br" data-i="t_br">🇧🇷 Brasil</button></div>
   <div class="seg" id="mode"><button class="on" data-v="acc" data-i="m_acc">Performance acumulada</button><button data-v="rot" data-i="m_rot">Rotação</button></div>
   <button class="tog" id="rel" aria-pressed="false"><i></i><span id="relL">/SPY</span></button>
  </div>
- <div class="row" id="accCtl"><span class="lbl" data-i="window">Janela</span><div class="pills" id="per"></div></div>
- <div class="row" id="rotCtl" hidden><span class="lbl" data-i="rolling">Retorno móvel</span><div class="pills" id="roll"></div><span class="lbl" data-i="horizon">Horizonte</span><div class="pills" id="hor"></div></div>
+ <div class="row r2">
+  <div class="row" id="accCtl"><span class="lbl" data-i="window">Janela</span><div class="pills" id="per"></div></div>
+  <div class="row" id="rotCtl" hidden><span class="lbl" data-i="rolling">Retorno móvel</span><div class="pills" id="roll"></div><span class="lbl" data-i="horizon">Horizonte</span><div class="pills" id="hor"></div></div>
+  <div class="status" id="status">Carregando dados…</div>
+ </div>
 </section>
 <main class="grid">
  <div class="card chartcard">
