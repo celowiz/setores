@@ -90,3 +90,46 @@ def test_choose_accepts_fresh_data():
     now = dt.datetime.combine(df.index[-1].date(), dt.time(20, 0), BRT)
     got = fd.choose("us", lambda: df, ["A"], "BM", None, now, [])
     assert got["stale"] is False and got["last"] == df.index[-1].strftime("%Y-%m-%d")
+
+
+def test_in_session_window():
+    assert fd.in_session(dt.datetime(2026, 10, 22, 10, 9, tzinfo=BRT))
+    assert fd.in_session(dt.datetime(2026, 10, 22, 18, 9, tzinfo=BRT))
+    assert not fd.in_session(dt.datetime(2026, 10, 22, 9, 59, tzinfo=BRT))
+    assert not fd.in_session(dt.datetime(2026, 10, 22, 19, 23, tzinfo=BRT))
+    assert not fd.in_session(dt.datetime(2026, 10, 24, 12, 0, tzinfo=BRT))  # sábado
+
+
+def test_parse_b3_intraday_only_today():
+    today = dt.date(2026, 10, 22)
+    pts = [{"closPric": 10.0, "dtTm": "10:00:00"}, {"closPric": 11.5, "dtTm": "14:21:30"}]
+    payload = {"TradgFlr": {"date": "2026-10-22", "scty": {"lstQtn": pts}}}
+    v, t = fd.parse_b3_intraday(payload, today)
+    assert v == 11.5 and t == dt.datetime(2026, 10, 22, 14, 21, 30, tzinfo=BRT)
+    assert fd.parse_b3_intraday({**payload, "TradgFlr": {**payload["TradgFlr"], "date": "2026-10-21"}}, today) is None
+    assert fd.parse_b3_intraday({"TradgFlr": {"date": "2026-10-22", "scty": {"lstQtn": []}}}, today) is None
+    assert fd.parse_b3_intraday(None, today) is None
+
+
+def test_with_intraday_needs_every_asset_and_uses_oldest_quote():
+    df = frame(300, ["A", "BM"], start="2025-08-28")
+    today = dt.date(2026, 10, 22)
+    t1 = dt.datetime(2026, 10, 22, 14, 20, tzinfo=BRT)
+    t2 = dt.datetime(2026, 10, 22, 14, 35, tzinfo=BRT)
+    assert fd.with_intraday(df, {"A": (1.0, t1), "BM": None}, today) is None
+    out, ts = fd.with_intraday(df, {"A": (1.0, t1), "BM": (2.0, t2)}, today)
+    assert out.index[-1] == pd.Timestamp(today) and list(out.iloc[-1]) == [1.0, 2.0]
+    assert ts == t1.astimezone(dt.UTC)
+
+
+def test_choose_marks_intraday_and_clean_keeps_partial_row():
+    today = dt.date(2026, 10, 22)
+    now = dt.datetime(2026, 10, 22, 14, 39, tzinfo=BRT)
+    df = frame(300, ["A", "BM"], start="2025-08-28")
+    df = df[df.index < pd.Timestamp(today)]
+    t = dt.datetime(2026, 10, 22, 14, 21, tzinfo=BRT)
+    got = fd.choose("us", lambda: fd.with_intraday(df, {"A": (1.0, t), "BM": (2.0, t)}, today), ["A"], "BM", None, now, [])
+    assert got["intraday"] is True and got["last"] == "2026-10-22"
+    assert got["as_of_ts"] == "2026-10-22T17:21:00Z"
+    closes = fd.choose("us", lambda: (df, None), ["A"], "BM", None, now, [])
+    assert closes["intraday"] is False and closes["as_of_ts"] is None and closes["last"] < "2026-10-22"

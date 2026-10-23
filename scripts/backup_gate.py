@@ -2,7 +2,7 @@
 
 Uso: python scripts/backup_gate.py <url do data/summary.json publicado>
 Escreve skip=true|false em $GITHUB_OUTPUT. Pula só se o resumo foi gerado depois das 19h BRT de hoje E
-as duas abas já têm o fechamento de hoje (o Yahoo às vezes publica o fechamento dos EUA com atraso).
+as duas abas já têm o fechamento de hoje, e não a cotação parcial do pregão (o Yahoo às vezes publica o fechamento dos EUA com atraso).
 Na dúvida (sem resumo, data ilegível, fechamento antigo, feriado), roda o build: refazer não tem custo.
 """
 
@@ -36,7 +36,8 @@ def should_skip(summary, now):
         if parse(summary.get("generated_at")) < threshold(now):
             return False
         day = threshold(now).date().isoformat()
-        return all((summary.get(k) or {}).get("as_of", "") >= day for k in ("us", "br"))
+        tabs = [summary.get(k) or {} for k in ("us", "br")]
+        return all(t.get("as_of", "") >= day and not t.get("intraday") for t in tabs)
     except (TypeError, ValueError, AttributeError):
         return False
 

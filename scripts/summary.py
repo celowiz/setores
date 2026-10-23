@@ -4,6 +4,9 @@ Por aba (EUA e Brasil): setor líder e lanterna do dia (retorno do último preg�
 retorno do índice de referência nas mesmas janelas e o retorno de todos os setores. Só reorganiza
 os fechamentos de setores.json (mesma regra da página: base = último fechamento antes da janela).
 Determinístico (empates desempatados pelo ticker).
+Pregão em andamento: a aba traz "intraday": true e "as_of_ts" (horário UTC da cotação); os valores do dia
+(e o YTD) são parciais até a rodada de fechamento. No topo, "as_of" é a data mais recente entre as abas,
+"as_of_ts" o horário de cotação mais recente e "intraday" indica se alguma aba está parcial.
 
 Uso: python scripts/summary.py <pasta com setores.json>  (fetch_data.py já grava o resumo)
 """
@@ -58,7 +61,13 @@ def tab_summary(tab):
     n = len(dates)
     last = dates[-1]
     bases = {"day": n - 2, "ytd": last_le(dates, dt.date(last.year - 1, 12, 31))}
-    out = {"as_of": tab["last"], "stale": bool(tab.get("stale")), "bench": tab["bench"]}
+    out = {
+        "as_of": tab["last"],
+        "as_of_ts": tab.get("as_of_ts") if tab.get("intraday") else None,
+        "intraday": bool(tab.get("intraday")),
+        "stale": bool(tab.get("stale")),
+        "bench": tab["bench"],
+    }
     rows = []
     for t in tab["order"]:
         row = {"t": t, "pt": NAMES[t][0], "en": NAMES[t][1]}
@@ -80,13 +89,17 @@ def tab_summary(tab):
 
 
 def build_summary(data):
+    tabs = {k: tab_summary(data[k]) for k in ("us", "br")}
+    ts = [t["as_of_ts"] for t in tabs.values() if t["as_of_ts"]]
     return {
         "schema": SCHEMA,
         "project": "setores",
         "url": URL,
         "generated_at": data.get("generated_at"),
-        "us": tab_summary(data["us"]),
-        "br": tab_summary(data["br"]),
+        "as_of": max(t["as_of"] for t in tabs.values()),
+        "as_of_ts": max(ts) if ts else None,
+        "intraday": any(t["intraday"] for t in tabs.values()),
+        **tabs,
     }
 
 

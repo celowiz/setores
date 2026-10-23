@@ -7,6 +7,9 @@ on:
   workflow_dispatch:
   schedule:
     # Minuto fora do :00/:30 (horários disputados no Actions) e diferente dos outros projetos do portfólio.
+    # Pregão: a cada 30 min em dias úteis, 10:09–17:39 BRT (:09/:39, livres dos outros crons do portfólio:
+    # :04/:34 monitor-b3, :07 rrg, :11/:41 mercado-hoje, :13 hmm, :17 pairs). Valores de hoje saem como parciais.
+    - cron: "9,39 13-20 * * 1-5"  # 10:09 … 17:39 BRT
     - cron: "23 22 * * 1-5"   # 19:23 BRT, após o fechamento da B3 e de NY (só fechamentos)
     # Reserva ~2 h depois: só refaz o build se o principal ainda não publicou os fechamentos de hoje (job gate).
     - cron: "23 0 * * 2-6"    # 21:23 BRT
@@ -19,7 +22,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   # Cron reserva: lê o data/summary.json publicado e pula o build se ele foi gerado depois das 19h BRT
-  # com fechamentos de hoje nas duas abas.
+  # com fechamentos de hoje (não parciais) nas duas abas.
   gate:
     runs-on: ubuntu-latest
     outputs:
