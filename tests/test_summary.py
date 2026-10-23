@@ -50,3 +50,16 @@ def test_full_universe_summary_is_small():
     raw = json.dumps(out, ensure_ascii=False, separators=(",", ":"))
     assert len(raw.encode()) < 20_000
     assert out["us"]["ytd_leader"] and out["br"]["day_laggard"] and out["project"] == "setores"
+
+
+def test_intraday_flag_and_timestamps():
+    s = {"A": [100, 100, 110, 120, 126], "BM": [10, 10, 11, 12, 12]}
+    sm.NAMES.update({"A": ("a", "a")})
+    us = {**tab(["A"], "BM", s, DATES), "intraday": True, "as_of_ts": "2026-01-06T17:21:00Z"}
+    br = tab(["A"], "BM", s, DATES[:-1])
+    out = sm.build_summary({"generated_at": "2026-01-06T17:40:00Z", "us": us, "br": br})
+    assert out["us"]["intraday"] is True and out["us"]["as_of_ts"] == "2026-01-06T17:21:00Z"
+    assert out["br"]["intraday"] is False and out["br"]["as_of_ts"] is None
+    assert out["as_of"] == "2026-01-06" and out["as_of_ts"] == "2026-01-06T17:21:00Z" and out["intraday"] is True
+    closes = sm.build_summary({"generated_at": "x", "us": br, "br": br})
+    assert closes["intraday"] is False and closes["as_of_ts"] is None

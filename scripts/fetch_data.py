@@ -9,6 +9,12 @@ falhar ou vier incompleta/mais antiga, reaproveita a aba do último setores.json
 "stale": true. Nada é inventado: sem dado novo e sem dado anterior, o script falha e o deploy não acontece
 (o GitHub Pages continua servindo a última versão publicada).
 
+Pregão em andamento (dias úteis, 10:00–18:30 BRT): a linha de hoje é montada com a última cotação
+intradiária de cada ativo (EUA: barras de 1 min do Yahoo; Brasil: DailyFluctuationHistory da B3, com atraso
+de ~15 min) e a aba sai com "intraday": true e "as_of_ts" (horário da cotação mais antiga entre os ativos).
+Se a cotação intradiária falhar ou vier incompleta, a aba fica só com os fechamentos (nada é completado).
+A rodada de fechamento (19:23 BRT) substitui a linha parcial pelo fechamento oficial.
+
 Uso: python scripts/fetch_data.py <pasta de saída> [--prev URL_ou_arquivo]
 """
 
@@ -31,6 +37,8 @@ from universe import BR_BENCH, BR_ORDER, SRC, US_BENCH, US_ORDER  # noqa: E402
 START = dt.date(2015, 1, 1)
 B3_URL = "https://sistemaswebb3-listados.b3.com.br/indexStatisticsProxy/IndexCall/GetPortfolioDay/"
 BRT = dt.timezone(dt.timedelta(hours=-3))
+B3_INTRA_URL = "https://cotacao.b3.com.br/mds/api/v1/DailyFluctuationHistory/"
+OPEN_BRT = (10, 0)  # abertura da B3; antes disso não há cotação de hoje
 CLOSE_BRT = (18, 30)  # antes disso, um pregão de hoje ainda pode ser intradiário
 DAILY_YEARS = 2
 
@@ -94,14 +102,83 @@ def b3_index(code, today, sleep=None):
     return pd.Series(pts).sort_index()
 
 
-def fetch_br(today):
+def in_session(now_brt):
+    """Dia útil entre a abertura e o horário a partir do qual só valem fechamentos."""
+    return now_brt.weekday() < 5 and OPEN_BRT <= (now_brt.hour, now_brt.minute) < CLOSE_BRT
+
+
+def parse_b3_intraday(payload, today):
+    """DailyFluctuationHistory -> (último valor, horário BRT da cotação) do pregão de hoje; senão None."""
+    fl = (payload or {}).get("TradgFlr") or {}
+    if fl.get("date") != today.isoformat():
+        return None
+    q = [x for x in ((fl.get("scty") or {}).get("lstQtn") or []) if isinstance(x.get("closPric"), (int, float)) and x.get("dtTm")]
+    if not q:
+        return None
+    try:
+        t = dt.datetime.combine(today, dt.time.fromisoformat(q[-1]["dtTm"]), BRT)
+    except ValueError:
+        return None
+    return float(q[-1]["closPric"]), t
+
+
+def with_intraday(df, quotes, today):
+    """Acrescenta a linha de hoje com {ativo: (valor, horário)}; exige todos os ativos (senão None).
+    Devolve (df, horário UTC da cotação mais antiga)."""
+    if not quotes or any(quotes.get(c) is None for c in df.columns):
+        return None
+    df = df.copy()
+    df.index = pd.to_datetime(df.index).tz_localize(None).normalize()
+    df = df[df.index < pd.Timestamp(today)]
+    df.loc[pd.Timestamp(today)] = [quotes[c][0] for c in df.columns]
+    return df, min(q[1] for q in quotes.values()).astimezone(dt.UTC)
+
+
+def fetch_br(now_brt, log=None):
+    today = now_brt.date()
     cols = {c: b3_index(c, today) for c in BR_ORDER + [BR_BENCH]}
     df = pd.DataFrame(cols)
     df.index = pd.to_datetime(df.index)
-    return df.sort_index()
+    df = df.sort_index()
+    if not in_session(now_brt):
+        return df, None
+    import requests
+
+    try:
+        quotes = {}
+        for c in df.columns:
+
+            def get(c=c):
+                r = requests.get(B3_INTRA_URL + c, timeout=20, headers={"User-Agent": "Mozilla/5.0"})
+                r.raise_for_status()
+                return r.json()
+
+            quotes[c] = parse_b3_intraday(retry(get, f"B3 intradiário {c}", attempts=3), today)
+        got = with_intraday(df, quotes, today)
+    except Exception as e:
+        got = None
+        if log is not None:
+            log.append(f"br: cotação intradiária indisponível ({type(e).__name__}: {e}); só fechamentos")
+    if got is None and log is not None and not any("br: cotação" in x for x in log):
+        log.append("br: sem cotação intradiária completa de hoje; só fechamentos")
+    return got or (df, None)
 
 
-def fetch_us():
+def us_intraday_quotes(m1, today):
+    """Barras de 1 min do Yahoo -> {ticker: (último preço, horário)} só com barras de hoje (horário de Brasília)."""
+    out = {}
+    for t in m1.columns:
+        s = m1[t].dropna()
+        if s.empty:
+            out[t] = None
+            continue
+        ts = s.index[-1]
+        ts = (ts.tz_localize("UTC") if ts.tzinfo is None else ts).to_pydatetime()
+        out[t] = (float(s.iloc[-1]), ts) if ts.astimezone(BRT).date() == today else None
+    return out
+
+
+def fetch_us(now_brt=None, log=None):
     import yfinance as yf
 
     tickers = US_ORDER + [US_BENCH]
@@ -114,12 +191,29 @@ def fetch_us():
             raise RuntimeError(f"Yahoo sem dados para {', '.join(missing)}")
         return close[tickers]
 
-    return retry(get, "Yahoo EUA")
+    close = retry(get, "Yahoo EUA")
+    if now_brt is None or not in_session(now_brt):
+        return close, None
+    try:
+        m1 = retry(
+            lambda: yf.download(tickers, period="1d", interval="1m", auto_adjust=True, progress=False, threads=True)["Close"],
+            "Yahoo EUA intradiário",
+            attempts=3,
+        )
+        got = with_intraday(close[tickers], us_intraday_quotes(m1.reindex(columns=tickers), now_brt.date()), now_brt.date())
+    except Exception as e:
+        got = None
+        if log is not None:
+            log.append(f"us: cotação intradiária indisponível ({type(e).__name__}: {e}); só fechamentos")
+    if got is None and log is not None and not any("us: cotação" in x for x in log):
+        log.append("us: sem cotação intradiária completa de hoje; só fechamentos")
+    return got or (close, None)
 
 
-def clean(df, bench, now_brt):
+def clean(df, bench, now_brt, keep_today=False):
     """Remove linhas vazias (o Yahoo às vezes devolve a data de hoje só com NaN), dias sem o índice
-    de referência, fins de semana e o pregão de hoje antes do fechamento."""
+    de referência, fins de semana e o pregão de hoje antes do fechamento (salvo keep_today: linha
+    intradiária montada por with_intraday)."""
     df = df.copy()
     df.index = pd.to_datetime(df.index).tz_localize(None).normalize()
     df = df[~df.index.duplicated(keep="last")].sort_index()
@@ -127,7 +221,7 @@ def clean(df, bench, now_brt):
     df = df[df[bench].notna()]
     df = df[df.index.dayofweek < 5]
     today = pd.Timestamp(now_brt.date())
-    if (now_brt.hour, now_brt.minute) < CLOSE_BRT:
+    if (now_brt.hour, now_brt.minute) < CLOSE_BRT and not keep_today:
         df = df[df.index < today]
     return df[df.index <= today]
 
@@ -159,6 +253,8 @@ def pack(df, order, bench, src):
         "src": src["pt"],
         "src_en": src["en"],
         "stale": False,
+        "intraday": False,
+        "as_of_ts": None,
     }
 
 
@@ -194,7 +290,12 @@ def choose(tab, fetch, order, bench, prev, now_brt, log):
     """Bloco novo se válido e não mais antigo que o publicado; senão, o publicado (stale). Nunca inventa."""
     old = (prev or {}).get(tab)
     try:
-        new = pack(clean(fetch(), bench, now_brt), order, bench, SRC[tab])
+        got = fetch()
+        df, ts = got if isinstance(got, tuple) else (got, None)
+        new = pack(clean(df, bench, now_brt, keep_today=ts is not None), order, bench, SRC[tab])
+        if ts is not None and new["last"] == now_brt.date().isoformat():
+            new["intraday"] = True
+            new["as_of_ts"] = ts.replace(microsecond=0).isoformat().replace("+00:00", "Z")
         probs = validate(new, now_brt)
         if old and new["last"] < old.get("last", ""):
             probs.append(f"dados novos ({new['last']}) mais antigos que os publicados ({old['last']})")
@@ -223,8 +324,8 @@ def main(argv=None):
     log = []
     out = {
         "generated_at": now.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-        "us": choose("us", fetch_us, US_ORDER, US_BENCH, prev, now_brt, log),
-        "br": choose("br", lambda: fetch_br(now_brt.date()), BR_ORDER, BR_BENCH, prev, now_brt, log),
+        "us": choose("us", lambda: fetch_us(now_brt, log), US_ORDER, US_BENCH, prev, now_brt, log),
+        "br": choose("br", lambda: fetch_br(now_brt, log), BR_ORDER, BR_BENCH, prev, now_brt, log),
         "log": log,
     }
     s = json.dumps(out, separators=(",", ":"), allow_nan=False)
@@ -237,6 +338,7 @@ def main(argv=None):
         b = out[k]
         print(
             f"{k}: até {b['last']}, {len(b['d']['gaps']) + 1} diários, {len(b['w']['gaps']) + 1} semanais"
+            + (f" (PARCIAL, cotação de {b['as_of_ts']})" if b.get("intraday") else "")
             + (" (STALE)" if b["stale"] else "")
         )
     print(f"setores.json {len(s) // 1024} KB; summary.json {os.path.getsize(os.path.join(a.out, 'summary.json'))} bytes")

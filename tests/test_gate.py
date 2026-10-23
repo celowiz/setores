@@ -15,5 +15,6 @@ def test_skip_only_when_built_after_19h_with_todays_closes():
     assert should_skip(ok, NOW) is True
     assert should_skip({**ok, "generated_at": "2026-10-22T21:50:00Z"}, NOW) is False  # antes das 19h BRT
     assert should_skip({**ok, "us": {"as_of": "2026-10-21"}}, NOW) is False  # Yahoo ainda sem o fechamento
+    assert should_skip({**ok, "br": {"as_of": "2026-10-22", "intraday": True}}, NOW) is False  # ainda parcial
     assert should_skip(None, NOW) is False
     assert should_skip({"generated_at": "lixo"}, NOW) is False

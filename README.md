@@ -30,8 +30,10 @@ Página estática em **[celowiz.github.io/setores](https://celowiz.github.io/set
 
 O workflow `.github/workflows/pages.yml` roda lint e testes, baixa os dados e publica o site:
 
-- **Principal:** dias úteis às **19:23 (Brasília)** (`23 22 * * 1-5` UTC), depois do fechamento da B3 e de Nova York.
-- **Reserva:** às **21:23 (Brasília)** (`23 0 * * 2-6` UTC). O job `gate` lê o `data/summary.json` publicado e pula o build se ele foi gerado depois das 19:00 com fechamentos de hoje nas duas abas.
+- **Pregão:** a cada 30 min em dias úteis, das **10:09 às 17:39 (Brasília)** (`9,39 13-20 * * 1-5` UTC). Os valores de hoje são **parciais**: vêm da última cotação de cada ativo, com atraso de até ~15 min (EUA: barras de 1 min do Yahoo Finance; Brasil: endpoint público `DailyFluctuationHistory` da B3, em `cotacao.b3.com.br`). A aba só recebe a linha de hoje se **todos** os ativos tiverem cotação do pregão de hoje; senão fica só com os fechamentos. A página mostra "parcial" na data, o horário da última cotação e um aviso de pregão em andamento.
+- **Fechamento:** dias úteis às **19:23 (Brasília)** (`23 22 * * 1-5` UTC), depois do fechamento da B3 e de Nova York. Substitui a linha parcial pelo fechamento oficial.
+- **Reserva:** às **21:23 (Brasília)** (`23 0 * * 2-6` UTC). O job `gate` lê o `data/summary.json` publicado e pula o build se ele foi gerado depois das 19:00 com fechamentos de hoje (não parciais) nas duas abas.
+- Os horários do GitHub Actions não são garantidos: rodadas agendadas podem atrasar (já vimos horas de atraso) ou ser puladas.
 - Também roda em push na `main` e manualmente (`workflow_dispatch`).
 - Em pull requests faz tudo, menos o deploy.
 
@@ -39,7 +41,7 @@ O workflow `.github/workflows/pages.yml` roda lint e testes, baixa os dados e pu
 
 ## Arquivos de dados
 
-- **`data/setores.json`** (~160 KB): é o que a página usa. Para cada aba traz `bench`, `order`, `first`, `last`, `last_by`, `stale`, `src`, além de `d` (diário) e `w` (semanal). Cada bloco tem o formato `{d0, gaps, s}`, ou seja, a primeira data, os intervalos em dias e as séries com 5 algarismos significativos.
+- **`data/setores.json`** (~160 KB): é o que a página usa. Para cada aba traz `bench`, `order`, `first`, `last`, `last_by`, `stale`, `intraday`, `as_of_ts`, `src`, além de `d` (diário) e `w` (semanal). Cada bloco tem o formato `{d0, gaps, s}`, ou seja, a primeira data, os intervalos em dias e as séries com 5 algarismos significativos.
 - **`data/summary.json`** (< 20 KB, hoje ~2,5 KB): é lido pela página Mercado Hoje do portfólio.
 
 ```json
@@ -48,8 +50,13 @@ O workflow `.github/workflows/pages.yml` roda lint e testes, baixa os dados e pu
   "project": "setores",
   "url": "https://celowiz.github.io/setores/",
   "generated_at": "2026-10-23T01:09:27Z",
+  "as_of": "2026-10-22",
+  "as_of_ts": null,
+  "intraday": false,
   "us": {
     "as_of": "2026-10-21",
+    "as_of_ts": null,
+    "intraday": false,
     "stale": false,
     "bench": "SPY",
     "day_base": "2026-10-20",
@@ -96,6 +103,11 @@ O workflow `.github/workflows/pages.yml` roda lint e testes, baixa os dados e pu
 ```
 
 Exemplo real (rodada local de 22/10/2026; a aba EUA ainda estava sem o fechamento do dia no Yahoo). Os retornos estão em fração com 4 casas, e empates são decididos pelo ticker.
+
+- `as_of` (no topo) é a data mais recente entre as abas; em cada aba, `as_of` é a data do último pregão.
+- `intraday: true` indica que o pregão de `as_of` ainda está em andamento: `day_*` e `ytd_*` usam a última cotação, com atraso de até ~15 min, e mudam até a rodada de fechamento. Nesse caso `as_of_ts` traz o horário (UTC, ISO 8601) da cotação mais antiga entre os ativos da aba. Fora do pregão, `intraday` é `false` e `as_of_ts` é `null`.
+- No topo, `intraday` é `true` se alguma aba estiver parcial, e `as_of_ts` é o horário de cotação mais recente.
+- `stale: true` indica que a fonte falhou e a aba repete os últimos dados válidos publicados.
 
 ## Rodar localmente
 

@@ -7,6 +7,9 @@ const S={tab:'us',mode:'acc',per:'YTD',rel:false,roll:'3M',hor:'5Y',off:new Set(
 let D=null,L=I18N.pt;
 const tr=(k,o={})=>(L[k]??I18N.pt[k]??k).replace(/\{(\w+)\}/g,(_,x)=>o[x]??'');
 const p2=x=>String(x).padStart(2,'0');
+// horário/data em Brasília (America/Sao_Paulo) de um ISO UTC
+const hm=iso=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(iso));
+const dBRT=iso=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso));
 const fd=(ms,y=true)=>{const d=new Date(ms),dd=d.getUTCDate(),mm=d.getUTCMonth(),yy=d.getUTCFullYear();
  return S.lang==='en'?L.mes[mm]+' '+dd+(y?', '+yy:''):p2(dd)+'/'+p2(mm+1)+(y?'/'+yy:'')};
 const pct=v=>v==null?'—':(v>0?'+':v<0?'−':'')+Math.abs(v*100).toFixed(Math.abs(v)<.1?2:1).replace('.',L.dec)+'%';
@@ -146,7 +149,11 @@ function pillsAll(){pills($('#per'),PERS,'per');pills($('#roll'),ROLLS,'roll');p
 function seg(el,key,cb){el.onclick=e=>{const b=e.target.closest('button');if(!b||S[key]===b.dataset.v)return;S[key]=b.dataset.v;el.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));cb&&cb();refresh(true)}}
 function header(){const en=S.lang==='en';
  const stale=['us','br'].filter(k=>D[k].stale).map(k=>tr('stale',{t:tr('tab_'+k)}));
- $('#status').innerHTML=tr('status',{us:fd(Date.parse(D.us.last)),br:fd(Date.parse(D.br.last))})+(stale.length?'<br><span class="warn">'+stale.join(' · ')+'</span>':'');
+ const part=k=>D[k].intraday?' <span class="part">'+tr('partial')+'</span>':'';
+ const intra=['us','br'].filter(k=>D[k].intraday&&D[k].as_of_ts).map(k=>tr('intra',{t:tr('tab_'+k),h:hm(D[k].as_of_ts)}));
+ const g=D.generated_at,upd=g?(dBRT(g)===dBRT(new Date().toISOString())?tr('upd_at',{h:hm(g)}):tr('upd_on',{d:fd(Date.parse(dBRT(g))),h:hm(g)})):'';
+ const notes=intra.concat(stale);
+ $('#status').innerHTML=tr('status',{us:fd(Date.parse(D.us.last))+part('us'),br:fd(Date.parse(D.br.last))+part('br'),upd})+(notes.length?'<br><span class="warn">'+notes.join(' · ')+'</span>':'');
  $('#srcs').textContent=tr('srcs',{us:en?D.us.src_en||D.us.src:D.us.src,br:en?D.br.src_en||D.br.src:D.br.src})}
 function refresh(tween){
  const X=D[S.tab],bm=X.bench;
@@ -157,10 +164,10 @@ function refresh(tween){
  const lbl=S.mode==='acc'?L.per[S.per]:L.per[S.roll],n=cur.t.length;
  $('#cTitle').textContent=(S.mode==='acc'?tr('acc_t')+' · '+lbl:tr('rot_t',{r:lbl})+' · '+tr('hor_t',{h:L.per[S.hor]}));
  $('#cSub').textContent=S.rel?tr('rel_s',{b:bm}):tr(S.mode==='acc'?'abs_s':'rot_s');
- $('#cDates').textContent=(S.mode==='acc'?tr('base',{d:fd(cur.base)}):'')+fd(cur.t[n-1]);
+ $('#cDates').textContent=(S.mode==='acc'?tr('base',{d:fd(cur.base)}):'')+fd(cur.t[n-1])+(D[S.tab].intraday&&cur.t[n-1]===Date.parse(D[S.tab].last)?' · '+tr('partial_at',{h:hm(D[S.tab].as_of_ts)}):'');
  $('#rTitle').textContent=S.mode==='acc'?tr('rank_acc',{p:lbl}):tr('rank_rot',{r:lbl});$('#rSub').textContent=S.rel?'/'+bm:tr('rsub_'+S.tab);
  const notes=Object.entries(cur.late).map(([k,ms])=>'<b>*</b> '+tr('since',{t:k,d:fd(ms)}));
- $('#notes').innerHTML=[cur.weekly?tr('weekly'):tr('daily'),...notes].join(' · ');
+ $('#notes').innerHTML=[cur.weekly?tr('weekly'):tr('daily'),...(D[S.tab].intraday?[tr('last_partial')]:[]),...notes].join(' · ');
  if(S.mode==='rot'){leader(cur);heat(cur)}else $('#leader').innerHTML='';
  fit();rank(cur);animate();
 }
