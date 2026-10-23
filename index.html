@@ -1,0 +1,57 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Setores · Performance setorial das bolsas — Marcelo Wizenberg</title>
+<meta name="description" content="Retorno acumulado e rotação dos setores nos EUA (ETFs SPDR) e no Brasil (índices setoriais da B3), com dados reais atualizados todo dia útil. Projeto de Marcelo Wizenberg.">
+<meta property="og:type" content="website"><meta property="og:title" content="Setores · Quais setores estão puxando a bolsa?"><meta property="og:description" content="Performance acumulada e rotação setorial nos EUA e no Brasil, com dados reais atualizados diariamente."><meta property="og:url" content="https://celowiz.github.io/setores/"><meta property="og:image" content="https://celowiz.github.io/setores/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:locale" content="pt_BR">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Setores · Quais setores estão puxando a bolsa?"><meta name="twitter:description" content="Performance acumulada e rotação setorial nos EUA e no Brasil, com dados reais."><meta name="twitter:image" content="https://celowiz.github.io/setores/og.png">
+<meta name="theme-color" content="#050506">
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png"><link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png"><link rel="icon" href="favicon.ico" sizes="any"><link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="css/style.css">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-QCBFGR39WG"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-QCBFGR39WG',{content_group:'setores'});</script>
+</head><body>
+<nav><a class="logo" href="https://celowiz.github.io/"><span class="mw">m<b>w</b></span><span>Marcelo Wizenberg</span></a>
+<div class="l"><a href="https://celowiz.github.io/" data-i="portfolio">Portfólio</a><a href="https://celowiz.github.io/monitor-b3/">Monitor B3</a><a href="https://celowiz.github.io/rrg/">RRG</a><a href="https://celowiz.github.io/quant-notebooks/">Quant Notebooks</a><a class="on" href="./" data-i="navself">Setores</a></div>
+<div class="navr"><div class="seg sm" id="lang"><button class="on" data-l="pt">PT</button><button data-l="en">EN</button></div></div></nav>
+<header class="hero"><div class="eyebrow" data-i="eyebrow">Projeto · Performance setorial</div>
+<h1 data-i="h1">Quais setores estão<br>puxando a bolsa?</h1>
+<p class="lead" data-i="lead">Retorno acumulado e rotação dos setores nos EUA (ETFs SPDR) e no Brasil (índices setoriais da B3), com dados reais atualizados todo dia útil.</p>
+<div class="status" id="status">Carregando dados…</div></header>
+<section class="toolbar">
+ <div class="row">
+  <div class="seg" id="tab"><button class="on" data-v="us" data-i="t_us">🇺🇸 EUA</button><button data-v="br" data-i="t_br">🇧🇷 Brasil</button></div>
+  <div class="seg" id="mode"><button class="on" data-v="acc" data-i="m_acc">Performance acumulada</button><button data-v="rot" data-i="m_rot">Rotação</button></div>
+  <button class="tog" id="rel" aria-pressed="false"><i></i><span id="relL">/SPY</span></button>
+ </div>
+ <div class="row" id="accCtl"><span class="lbl" data-i="window">Janela</span><div class="pills" id="per"></div></div>
+ <div class="row" id="rotCtl" hidden><span class="lbl" data-i="rolling">Retorno móvel</span><div class="pills" id="roll"></div><span class="lbl" data-i="horizon">Horizonte</span><div class="pills" id="hor"></div></div>
+</section>
+<main class="grid">
+ <div class="card chartcard">
+  <div class="charthead"><div><div class="eyebrow" id="cTitle"></div><div class="ill" id="cSub"></div></div><div class="ill" id="cDates"></div></div>
+  <div class="cwrap" id="cwrap"><canvas id="chart"></canvas><div class="tip" id="tip" hidden></div></div>
+  <div id="heatBox" hidden><div class="hhead"><span class="eyebrow" data-i="lead_t">Liderança ao longo do tempo</span><span class="ill" data-i="lead_s">posição no ranking do retorno móvel · verde = 1º, vermelho = último</span></div><canvas id="heat"></canvas></div>
+  <p class="ill notes" id="notes"></p>
+ </div>
+ <aside class="card rankcard">
+  <div class="rhead"><div><div class="eyebrow" id="rTitle">Ranking</div><div class="ill" id="rSub"></div></div><button class="btn sm" id="all" data-i="showall">Mostrar todos</button></div>
+  <div class="rank" id="rank"></div>
+  <p class="ill hint"><span class="dk" data-i="hint">Clique para ocultar/mostrar · duplo clique para isolar · passe o mouse para destacar</span><span class="mb" data-i="hint_m">Toque para ocultar/mostrar · toque duplo para isolar · arraste no gráfico para ver os valores</span></p>
+  <div class="leader" id="leader"></div>
+ </aside>
+</main>
+<section class="lower">
+ <a class="card rrgcard" href="https://celowiz.github.io/rrg/">
+  <div class="eyebrow" data-i="rrg_e">Complemento · RRG</div>
+  <h3 data-i="rrg_h">Veja a rotação no Gráfico de Rotação Relativa</h3>
+  <p class="note" data-i="rrg_p">Enquanto esta página mostra quanto cada setor rendeu, o RRG mostra para onde ele está indo.</p>
+  <span class="go">celowiz.github.io/rrg →</span>
+ </a>
+ <div class="card method"><div class="eyebrow" data-i="method">Como é calculado</div>
+  <div class="mcols">
+   <p data-i="m1"></p><p data-i="m2"></p><p data-i="m3"></p><p data-i="m4"></p>
+   <p class="full"><b data-i="m5l">Fontes.</b> <span id="srcs"></span></p>
+  </div></div>
+</section>
+<footer><span data-i="foot">Setores · projeto do portfólio de Marcelo Wizenberg · dados atualizados por GitHub Actions</span> · <a href="https://celowiz.github.io/" data-i="back">← Voltar ao portfólio</a></footer>
+<script src="js/i18n.js"></script><script src="js/calc.js"></script><script src="js/app.js"></script>
+</body></html>
