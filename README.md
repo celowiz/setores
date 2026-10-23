@@ -111,7 +111,7 @@ python -m pytest -q tests && node --test tests/
 
 ## Ícone
 
-**Linhas divergentes**: três linhas saem do mesmo ponto e se separam, como no retorno acumulado. A linha verde-água sobe, a creme vai de lado e a apagada cai. O ícone usa o mesmo quadrado escuro arredondado dos outros projetos. `favicon.svg` é o desenho principal, e `favicon-16.svg` é a versão simplificada para 16 px. Para regenerar os PNG/ICO, rode `scripts/make_assets.py`.
+**Linhas divergentes**: três linhas saem do mesmo ponto e se separam, como no retorno acumulado. A linha verde-água sobe, a creme vai de lado e a apagada cai. O ícone usa o mesmo quadrado escuro arredondado dos outros projetos. `favicon.svg` é o desenho principal, e `favicon-16.svg` é a versão simplificada para 16 px. A página usa só PNG e ICO, sem o `<link>` do SVG, para que a aba mostre o desenho simplificado de 16 px, como no Lab e no Mercado Hoje. Os SVG ficam no repositório apenas como fonte de `scripts/make_assets.py` e não são publicados.
 
 ## Analytics
 

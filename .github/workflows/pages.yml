@@ -61,7 +61,7 @@ jobs:
         run: python scripts/fetch_data.py _site/data --prev https://celowiz.github.io/setores/data/setores.json
       - name: Montar site
         run: |
-          cp -r index.html css js favicon.svg favicon-16.png favicon-32.png favicon.ico apple-touch-icon.png og.png _site/
+          cp -r index.html css js favicon-16.png favicon-32.png favicon.ico apple-touch-icon.png og.png _site/
           touch _site/.nojekyll
           ls -la _site _site/data
       - uses: actions/configure-pages@v6
