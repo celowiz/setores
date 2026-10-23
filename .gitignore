@@ -1,0 +1,6 @@
+# dados são gerados pelo workflow e publicados só no artefato do Pages
+data/
+_site/
+__pycache__/
+.pytest_cache/
+.ruff_cache/

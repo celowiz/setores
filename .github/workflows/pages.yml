@@ -1,0 +1,80 @@
+name: Dados + Pages
+on:
+  push:
+    branches: [main]
+  # PR: roda lint, testes, dados e montagem do site para validar; só publica na main.
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Minuto fora do :00/:30 (horários disputados no Actions) e diferente dos outros projetos do portfólio.
+    - cron: "23 22 * * 1-5"   # 19:23 BRT, após o fechamento da B3 e de NY (só fechamentos)
+    # Reserva ~2 h depois: só refaz o build se o principal ainda não publicou os fechamentos de hoje (job gate).
+    - cron: "23 0 * * 2-6"    # 21:23 BRT
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  # Cron reserva: lê o data/summary.json publicado e pula o build se ele foi gerado depois das 19h BRT
+  # com fechamentos de hoje nas duas abas.
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+    steps:
+      - uses: actions/checkout@v7
+        if: github.event.schedule == '23 0 * * 2-6'
+        with:
+          sparse-checkout: scripts/backup_gate.py
+          sparse-checkout-cone-mode: false
+      - id: check
+        if: github.event.schedule == '23 0 * * 2-6'
+        run: python3 scripts/backup_gate.py https://celowiz.github.io/setores/data/summary.json
+  build:
+    needs: gate
+    if: needs.gate.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+          for f in js/*.js; do node --check "$f"; done
+      - name: Testes
+        run: |
+          python -m pytest -q tests
+          node --test tests/
+      # Yahoo (EUA, ajustado) + API pública de índices da B3 (Brasil). Se uma fonte falhar,
+      # mantém o último bloco publicado (marcado como desatualizado); sem dado anterior, o build falha
+      # e o Pages segue com a versão anterior do site.
+      - name: Baixar fechamentos (setores.json + summary.json)
+        run: python scripts/fetch_data.py _site/data --prev https://celowiz.github.io/setores/data/setores.json
+      - name: Montar site
+        run: |
+          cp -r index.html css js favicon.svg favicon-16.png favicon-32.png favicon.ico apple-touch-icon.png og.png _site/
+          touch _site/.nojekyll
+          ls -la _site _site/data
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

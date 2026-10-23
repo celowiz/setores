@@ -1,0 +1,11 @@
+line-length = 140
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[lint.per-file-ignores]
+"scripts/make_assets.py" = ["E501"]  # template HTML/CSS do og.png
+
+[lint.isort]
+known-first-party = ["backup_gate", "fetch_data", "net", "summary", "universe"]
