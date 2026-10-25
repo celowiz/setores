@@ -1,5 +1,8 @@
-pandas>=2.2
-requests>=2.32
-yfinance>=0.2.54
-pytest>=8
-ruff>=0.6
+# Versões exatas = as que o CI instalou e validou (24/10/2026).
+# Fixar evita que um upgrade silencioso do pandas/yfinance quebre o cron.
+pandas==3.1.0
+numpy==2.5.4
+requests==2.34.2
+yfinance==1.7.0
+pytest==9.1.1
+ruff==0.17.2
