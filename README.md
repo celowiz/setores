@@ -1,5 +1,9 @@
 # Setores · performance setorial EUA e Brasil
 
+**▶ Abrir o app: [celowiz.github.io/setores](https://celowiz.github.io/setores/)**
+
+[![Setores: retorno acumulado dos setores dos EUA no ano](docs/screenshot.png)](https://celowiz.github.io/setores/)
+
 Página estática em **[celowiz.github.io/setores](https://celowiz.github.io/setores/)**, publicada pelo GitHub Pages via GitHub Actions. Mostra quais setores estão puxando a bolsa nos EUA e no Brasil, em português e inglês (`?lang=en` ou botão PT/EN).
 
 - **Retorno acumulado:** 13 janelas (1D, 5D, 10D, MTD, 1M, QTD, 3M, 6M, YTD, 1A, 3A, 5A, 10A), absoluto ou relativo ao benchmark (`/SPY` e `/IBOV`).
@@ -30,7 +34,7 @@ Página estática em **[celowiz.github.io/setores](https://celowiz.github.io/set
 
 O workflow `.github/workflows/pages.yml` roda lint e testes, baixa os dados e publica o site:
 
-- **Pregão:** a cada 30 min em dias úteis, das **10:09 às 17:39 (Brasília)** (`9,39 13-20 * * 1-5` UTC). Os valores de hoje são **parciais**: vêm da última cotação de cada ativo, com atraso de até ~15 min (EUA: barras de 1 min do Yahoo Finance; Brasil: endpoint público `DailyFluctuationHistory` da B3, em `cotacao.b3.com.br`). A aba só recebe a linha de hoje se **todos** os ativos tiverem cotação do pregão de hoje; senão fica só com os fechamentos. A página mostra "parcial" na data, o horário da última cotação e um aviso de pregão em andamento.
+- **Pregão:** várias vezes por dia em dias úteis. O cron pede uma rodada a cada 30 min, das **10:09 às 17:39 (Brasília)** (`9,39 13-20 * * 1-5` UTC), mas o GitHub Actions atrasa e pula muitas delas (na sexta 23/10/2026 só 3 rodaram); por isso a página fala em "várias vezes por dia", não em "a cada 30 min". Os valores de hoje são **parciais**: vêm da última cotação de cada ativo, com atraso de até ~15 min (EUA: barras de 1 min do Yahoo Finance; Brasil: endpoint público `DailyFluctuationHistory` da B3, em `cotacao.b3.com.br`). A aba só recebe a linha de hoje se **todos** os ativos tiverem cotação do pregão de hoje; senão fica só com os fechamentos. A página mostra "parcial" na data, o horário da última cotação e um aviso de pregão em andamento.
 - **Fechamento:** dias úteis às **19:23 (Brasília)** (`23 22 * * 1-5` UTC), depois do fechamento da B3 e de Nova York. Substitui a linha parcial pelo fechamento oficial.
 - **Reserva:** às **21:23 (Brasília)** (`23 0 * * 2-6` UTC). O job `gate` lê o `data/summary.json` publicado e pula o build se ele foi gerado depois das 19:00 com fechamentos de hoje (não parciais) nas duas abas.
 - Os horários do GitHub Actions não são garantidos: rodadas agendadas podem atrasar (já vimos horas de atraso) ou ser puladas.
@@ -128,3 +132,7 @@ python -m pytest -q tests && node --test tests/calc.test.mjs
 ## Analytics
 
 GA4 `G-QCBFGR39WG` (o mesmo do portfólio), `content_group` = `setores`.
+
+## Licença
+
+Código sob licença [MIT](LICENSE). Dados de terceiros (B3, Yahoo Finance) seguem os termos de cada fonte.

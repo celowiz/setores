@@ -44,7 +44,7 @@ function draw(st,s,yr,p){
  cx.clearRect(0,0,W,H);cx.font='10.5px ui-monospace,Menlo,Consolas,monospace';
  for(const v of niceTicks(yr[0],yr[1],mob()?5:7)){const y=Y(v);cx.strokeStyle=v===0?'rgba(244,241,234,.35)':'rgba(255,255,255,.06)';cx.setLineDash(v===0?[3,4]:[]);cx.beginPath();cx.moveTo(ml,y);cx.lineTo(ml+pw,y);cx.stroke();cx.setLineDash([]);cx.fillStyle='#5f5f68';cx.textAlign='left';cx.fillText(pct(v).replace(/[.,]0%$/,'%'),ml+2,y-4)}
  // eixo x: marcas em fronteiras de calendário (dia, mês ou ano), sem rótulos repetidos
- cx.fillStyle='#71717a';let lastR=-1e9;
+ cx.fillStyle='#8a8a93';let lastR=-1e9;
  for(const{j,u}of C.timeTicks(st.t,mob()?4:7)){const lab=xLabel(st.t[j],u),w=cx.measureText(lab).width,x=Math.min(Math.max(X(j),ml+w/2),ml+pw-w/2);
   if(x-w/2<lastR+10)continue;cx.textAlign='center';cx.fillText(lab,x,H-8);lastR=x+w/2;
   cx.strokeStyle='rgba(255,255,255,.08)';cx.beginPath();cx.moveTo(X(j),mt+ph);cx.lineTo(X(j),mt+ph+4);cx.stroke()}
@@ -118,7 +118,7 @@ function heat(st){
  ord.forEach((k,r)=>{hx.fillStyle=COL[k];hx.fillText(k,0,r*rh+rh-4)});
  for(let c=0;c<cols;c++){const j=Math.round(c/(cols-1||1)*(m-1));const vs=keys.map(k=>[k,st.s[k][j]]).filter(x=>x[1]!=null).sort((a,b)=>b[1]-a[1]);const n=vs.length;
   vs.forEach(([k],pos)=>{const r=ord.indexOf(k),f=n>1?pos/(n-1):0;hx.fillStyle=f<.5?`rgba(45,212,191,${(.5-f)*1.9+.04})`:`rgba(248,113,113,${(f-.5)*1.9+.04})`;hx.fillRect(lw+c*cwid,r*rh+1,Math.ceil(cwid),rh-2)})}
- hx.fillStyle='#71717a';hx.font='10px ui-monospace,Menlo,Consolas,monospace';hx.textAlign='left';hx.fillText(fd(st.t[0]),lw,H-3);hx.textAlign='right';hx.fillText(fd(st.t[m-1]),W,H-3);
+ hx.fillStyle='#8a8a93';hx.font='10px ui-monospace,Menlo,Consolas,monospace';hx.textAlign='left';hx.fillText(fd(st.t[0]),lw,H-3);hx.textAlign='right';hx.fillText(fd(st.t[m-1]),W,H-3);
 }
 
 // ---------- tooltip ----------
